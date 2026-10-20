@@ -1,3 +1,4 @@
+```html
 <!DOCTYPE html>
 <html lang="fr">
 <head>
@@ -5,82 +6,148 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Missions du Mariage 💍</title>
   <style>
-    body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #f4f6f9; margin: 0; padding: 15px; }
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: #f4f6f9;
+      margin: 0;
+      padding: 15px;
+    }
     .header { text-align: center; margin-bottom: 20px; }
     h1 { color: #2c3e50; margin-bottom: 5px; }
     p { color: #7f8c8d; margin-top: 0; }
-    .card { background: white; padding: 15px; border-radius: 12px; margin-bottom: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); display: flex; justify-content: space-between; align-items: center; }
+    .card {
+      background: white;
+      padding: 15px;
+      border-radius: 12px;
+      margin-bottom: 12px;
+      box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+    }
     .info { flex-grow: 1; }
     .name { font-size: 1.1em; font-weight: bold; color: #333; }
     .task { color: #555; margin: 4px 0; }
     .time { font-size: 0.9em; font-weight: bold; color: #3498db; }
-    .btn { padding: 12px 18px; border-radius: 8px; border: none; font-weight: bold; cursor: pointer; color: white; transition: 0.3s; font-size: 0.95em; min-width: 110px; }
+    .btn {
+      padding: 12px 18px;
+      border-radius: 8px;
+      border: none;
+      font-weight: bold;
+      cursor: pointer;
+      color: white;
+      transition: 0.3s;
+      font-size: 0.95em;
+      min-width: 110px;
+    }
     .btn-red { background-color: #e74c3c; box-shadow: 0 3px 0 #c0392b; }
     .btn-green { background-color: #2ecc71; box-shadow: 0 3px 0 #27ae60; }
+    @media (max-width: 480px) {
+      .card { padding: 12px; }
+      .btn { min-width: 95px; padding: 10px; }
+    }
   </style>
 </head>
 <body>
-
   <div class="header">
     <h1>💍 Planning du Mariage</h1>
     <p>Cliquez sur votre tâche pour la passer en vert quand c'est fait !</p>
   </div>
 
-  <div id="task-list"></div>
+  <div id="task-list">Chargement des tâches...</div>
+  <p id="error-message" role="alert"></p>
 
-  <!-- Synchronisation en direct pour tout le monde -->
   <script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-    import { getDatabase, ref, onValue, set } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
+    import { initializeApp }
+      from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+    import { getDatabase, ref, onValue, set }
+      from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
 
-    // Base de données publique temporaire pour le mariage
-    const firebaseConfig = { databaseURL: "https://mariage-tasks-default-rtdb.europe-west1.firebasedatabase.app" };
+    // Configuration Firebase à vérifier avant utilisation.
+    const firebaseConfig = {
+      databaseURL: "https://mariage-tasks-default-rtdb.europe-west1.firebasedatabase.app"
+    };
+
     const app = initializeApp(firebaseConfig);
     const db = getDatabase(app);
-    const tasksRef = ref(db, 'mariage_frere_tasks');
+    const tasksRef = ref(db, "mariage_frere_tasks");
 
-    // Tâches de base (modifie les noms et heures ici si tu veux !)
     const initialTasks = [
-      { id: 1, nom: "Tonton Marc", heure: "10h30", task: "Récupérer la pièce montée", status: "rouge" },
-      { id: 2, nom: "Sarah (Cousine)", heure: "12h00", task: "Déposer les fleurs à la salle", status: "rouge" },
-      { id: 3, nom: "Karim", heure: "14h00", task: "Guider les invités au parking", status: "rouge" },
-      { id: 4, nom: "Maman", heure: "15h30", task: "Vérifier la sono et micros", status: "rouge" }
+      { id: 1, nom: "Tonton Marc", heure: "10h30",
+        task: "Récupérer la pièce montée", status: "rouge" },
+      { id: 2, nom: "Sarah (Cousine)", heure: "12h00",
+        task: "Déposer les fleurs à la salle", status: "rouge" },
+      { id: 3, nom: "Karim", heure: "14h00",
+        task: "Guider les invités au parking", status: "rouge" },
+      { id: 4, nom: "Maman", heure: "15h30",
+        task: "Vérifier la sono et micros", status: "rouge" }
     ];
 
-    // Écouter les changements en temps réel
+    const container = document.getElementById("task-list");
+    const errorMessage = document.getElementById("error-message");
+
     onValue(tasksRef, (snapshot) => {
+      errorMessage.textContent = "";
       const data = snapshot.val();
-      if (!data) {
-        set(tasksRef, initialTasks);
+
+      if (data === null) {
+        set(tasksRef, initialTasks).catch(showError);
         return;
       }
-      render(data);
-    });
+
+      const tasks = Array.isArray(data) ? data : Object.values(data);
+      render(tasks);
+    }, showError);
 
     window.toggleTask = function(index, currentStatus) {
-      const newStatus = currentStatus === 'rouge' ? 'vert' : 'rouge';
-      set(ref(db, `mariage_frere_tasks/${index}/status`), newStatus);
+      const newStatus = currentStatus === "rouge" ? "vert" : "rouge";
+      set(ref(db, `mariage_frere_tasks/${index}/status`), newStatus)
+        .catch(showError);
     };
 
     function render(tasks) {
-      const container = document.getElementById("task-list");
-      container.innerHTML = "";
+      container.replaceChildren();
+
       tasks.forEach((t, i) => {
         const isVert = t.status === "vert";
-        container.innerHTML += `
-          <div class="card">
-            <div class="info">
-              <div class="name">${t.nom}</div>
-              <div class="task">${t.task}</div>
-              <div class="time">⏰ ${t.heure}</div>
-            </div>
-            <button class="btn ${isVert ? 'btn-green' : 'btn-red'}" onclick="toggleTask(${i}, '${t.status}')">
-              ${isVert ? '✔ Terminé' : '✖ À faire'}
-            </button>
-          </div>
-        `;
+        const card = document.createElement("div");
+        card.className = "card";
+
+        const info = document.createElement("div");
+        info.className = "info";
+
+        const name = document.createElement("div");
+        name.className = "name";
+        name.textContent = t.nom;
+
+        const task = document.createElement("div");
+        task.className = "task";
+        task.textContent = t.task;
+
+        const time = document.createElement("div");
+        time.className = "time";
+        time.textContent = `⏰ ${t.heure}`;
+
+        const button = document.createElement("button");
+        button.className = `btn ${isVert ? "btn-green" : "btn-red"}`;
+        button.textContent = isVert ? "✔ Terminé" : "✖ À faire";
+        button.addEventListener("click", () => {
+          window.toggleTask(i, t.status);
+        });
+
+        info.append(name, task, time);
+        card.append(info, button);
+        container.append(card);
       });
+    }
+
+    function showError(error) {
+      console.error(error);
+      errorMessage.textContent =
+        "Impossible de synchroniser les tâches. Vérifiez la configuration et les règles Firebase.";
     }
   </script>
 </body>
 </html>
+```
